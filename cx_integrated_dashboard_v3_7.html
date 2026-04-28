@@ -1079,7 +1079,7 @@ function loadNow(data, name) {
 
 // ── VOC 기업별 통계 계산 후 Sheets에 자동 반영 ──
 function syncVocStatsToSheets(data) {
-  var GAS_URL = 'https://script.google.com/macros/s/AKfycbxlqsc61ML1Jbc3OqeKTgYZP7y4B_4k_pOctjAt3sRbKTDy2TZkXPyEa4si-kPl6mZ9vw/exec';
+  var GAS_URL = 'https://script.google.com/macros/s/AKfycbx4u-qGdKriGJyszRbT1SFFEiONtz6NVn3lF_2uPC5MEZQzMB-g0FlPgYL_4JgmXjLZUQ/exec';
   var btn = document.getElementById('btnExportVoc');
   var badge = document.getElementById('issuesSyncBadge');
   var today = new Date();
@@ -1675,7 +1675,7 @@ function fetchAllAssigneeSheets(baseUrl, assigneeNames) {
 }
 
 function manualRefreshIssues() {
-  var GAS_URL = 'https://script.google.com/macros/s/AKfycbxlqsc61ML1Jbc3OqeKTgYZP7y4B_4k_pOctjAt3sRbKTDy2TZkXPyEa4si-kPl6mZ9vw/exec';
+  var GAS_URL = 'https://script.google.com/macros/s/AKfycbx4u-qGdKriGJyszRbT1SFFEiONtz6NVn3lF_2uPC5MEZQzMB-g0FlPgYL_4JgmXjLZUQ/exec';
   var btn = document.getElementById('btnRefreshIssues');
   if (btn) { btn.textContent = '⏳ 불러오는 중...'; btn.disabled = true; }
   fetchSheetsData(GAS_URL, function(rows) {
@@ -1977,7 +1977,7 @@ document.getElementById('btnExportVoc').addEventListener('click', function() {
 
 // 저장된 Sheets URL 자동 복원
 (function() {
-  var GAS_URL = 'https://script.google.com/macros/s/AKfycbxlqsc61ML1Jbc3OqeKTgYZP7y4B_4k_pOctjAt3sRbKTDy2TZkXPyEa4si-kPl6mZ9vw/exec';
+  var GAS_URL = 'https://script.google.com/macros/s/AKfycbx4u-qGdKriGJyszRbT1SFFEiONtz6NVn3lF_2uPC5MEZQzMB-g0FlPgYL_4JgmXjLZUQ/exec';
   localStorage.setItem(SHEETS_URL_KEY, GAS_URL);
   // sheetsUrl / sheetsUrlInline 은 숨겨져 있으므로 값만 세팅
   var el = document.getElementById('sheetsUrl');
