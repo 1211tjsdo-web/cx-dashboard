@@ -255,7 +255,7 @@ select:hover,button:hover{border-color:var(--blue);background:var(--bg2);}
       <div class="card"><div class="ct">우선순위 x 카테고리 분포</div><div style="position:relative;width:100%;height:220px;"><canvas id="cPri"></canvas></div></div>
       <div class="card"><div class="ct">구분별 평균 AHT (일, 완료건)</div><div style="position:relative;width:100%;height:220px;"><canvas id="cTypeAht"></canvas></div></div>
     </div>
-    <div class="card mb"><div class="ct">장기 미처리 건 (접수 후 30일 이상)</div><div class="voc-list" id="longList"></div></div>
+    <div class="card mb"><div class="ct">장기 미처리 건 (접수 후 90일 이상)</div><div class="voc-list" id="longList"></div></div>
   </div>
 
   <div class="section" id="sec-list">
@@ -337,7 +337,7 @@ var currentView = 'monthly';
 var currentSec = 'overview';
 var selectedCust = null;
 
-var PRIV = ['담당자','작성자','등록자 ID','등록자ID','업무번호','프로젝트 일련번호','등록자','등록자id'];
+var PRIV = ['담당자','작성자','등록자 ID','등록자ID','업무번호','프로젝트 일련번호','등록자','등록자id','계정','계정정보','비밀번호','password','아이디','ID','이메일','email','연락처','전화번호','휴대폰'];
 
 var CAT = [
   {대:'오류',중:'접속/인증/알림',    color:'#E24B4A',bg:'#FCEBEB',fg:'#791F1F', test:function(t,g){return /로그인|접속불가|pin|인증.*실패|알림.*미수신|sso/.test(t);}},
@@ -600,6 +600,20 @@ function normalizeCompany(name) {
   return COMPANY_MAP[trimmed] || trimmed;
 }
 
+// 내용에서 개인정보 패턴 마스킹
+function sanitizeContent(text) {
+  if (!text) return text;
+  // 이메일
+  text = text.replace(/[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g, '[이메일 삭제]');
+  // 전화번호 (010-xxxx-xxxx, 02-xxxx-xxxx 등)
+  text = text.replace(/\d{2,3}[-.\s]?\d{3,4}[-.\s]?\d{4}/g, '[연락처 삭제]');
+  // 비밀번호 패턴 (비밀번호: xxx, pw: xxx, password: xxx)
+  text = text.replace(/(비밀번호|password|pw|passwd)\s*[:：]\s*\S+/gi, '[비밀번호 삭제]');
+  // 계정/아이디 패턴
+  text = text.replace(/(계정|아이디|id|account)\s*[:：]\s*\S+/gi, '[계정정보 삭제]');
+  return text;
+}
+
 function parseXLSX(buf) {
   var wb = XLSX.read(new Uint8Array(buf), {type:'array', cellDates:true});
   var ws = wb.Sheets[wb.SheetNames[0]];
@@ -627,7 +641,7 @@ function parseXLSX(buf) {
     var 기업명 = normalizeCompany(String(r['기업명'] || '').trim());
     var 구분 = String(r['구분'] || '').trim();
     var 내용raw = String(r['내용'] || '');
-    var 내용 = 내용raw.replace(/\u00a0/g, ' ').slice(0, 600);
+    var 내용 = sanitizeContent(내용raw.replace(/\u00a0/g, ' ').slice(0, 600));
     if (!기업명 || !제목 || 제목.length <= 4 || 제목.indexOf('[ENT]') === 0) continue;
     var cat = classify(제목, 구분, 내용);
     rows.push({
@@ -660,7 +674,7 @@ function renderKPI(data) {
     if (r.aht != null) { ahtSum += r.aht; ahtCnt++; }
     if (r.상태 !== '완료' && r.상태 !== '보류' && r.등록일) {
       var days = Math.floor((today - new Date(r.등록일)) / 86400000);
-      if (days >= 30) long_++;
+      if (days >= 90) long_++;
     }
   }
   var avg = ahtCnt ? Math.round(ahtSum / ahtCnt * 10) / 10 : '-';
@@ -670,7 +684,7 @@ function renderKPI(data) {
     {l:'평균 AHT',  v:avg+'일',   s:'완료건 기준', cls:''},
     {l:'처리 중',   v:pend+'건',  s:'미완료·미보류', cls:''},
     {l:'긴급+높음', v:(urg+high)+'건', s:'긴급 '+urg+' / 높음 '+high, cls:urg>0?'kpi-alert':'kpi-warn'},
-    {l:'장기미처리',v:long_+'건', s:'30일 이상', cls:long_>0?'kpi-alert':''}
+    {l:'장기미처리',v:long_+'건', s:'90일 이상', cls:long_>0?'kpi-alert':''}
   ];
   var html = '';
   for (var i = 0; i < items.length; i++) {
@@ -1065,7 +1079,7 @@ function loadNow(data, name) {
 
 // ── VOC 기업별 통계 계산 후 Sheets에 자동 반영 ──
 function syncVocStatsToSheets(data) {
-  var GAS_URL = 'https://script.google.com/macros/s/AKfycbxQ1V1DkSkIzireOCYpvW5dvnodE821ziWla96if9MPpnd3VY4sEgnj-PQy7wvJMe-kJg/exec';
+  var GAS_URL = 'https://script.google.com/macros/s/AKfycbxlqsc61ML1Jbc3OqeKTgYZP7y4B_4k_pOctjAt3sRbKTDy2TZkXPyEa4si-kPl6mZ9vw/exec';
   var btn = document.getElementById('btnExportVoc');
   var badge = document.getElementById('issuesSyncBadge');
   var today = new Date();
@@ -1082,7 +1096,7 @@ function syncVocStatsToSheets(data) {
       stats[company].done++;
     } else if (r.상태 !== '보류' && r.등록일) {
       var days = Math.floor((today - new Date(r.등록일)) / 86400000);
-      if (days >= 30) stats[company].longPending++;
+      if (days >= 90) stats[company].longPending++;
     }
   }
 
@@ -1090,7 +1104,8 @@ function syncVocStatsToSheets(data) {
   for (var company in stats) {
     var s = stats[company];
     var rate = s.total > 0 ? Math.round(s.done / s.total * 100) : 0;
-    updates.push({ name: company, inquiries: s.total, responseRate: rateToRange(rate), longPending: s.longPending });
+    var status = calcStatus(rate, s.longPending);
+    updates.push({ name: company, inquiries: s.total, responseRate: rateToRange(rate), longPending: s.longPending, status: status });
   }
 
   if (!updates.length) { alert('집계할 VOC 데이터가 없습니다.'); return; }
@@ -1122,13 +1137,17 @@ function syncVocStatsToSheets(data) {
     idx += PARALLEL;
     if (btn) btn.textContent = '⏳ 전송 중... (' + Math.min(idx, total) + '/' + total + ')';
 
-    var promises = batch.map(function(upd) {
+    var isLastBatch = (idx >= updates.length);
+    var promises = batch.map(function(upd, batchIdx) {
+      var isLast = isLastBatch && (batchIdx === batch.length - 1);
       var url = GAS_URL
         + '?action=write1'
         + '&name=' + encodeURIComponent(upd.name)
         + '&inquiries=' + upd.inquiries
         + '&responseRate=' + encodeURIComponent(upd.responseRate)
         + '&longPending=' + upd.longPending
+        + '&status=' + encodeURIComponent(upd.status || '')
+        + '&isLast=' + isLast
         + '&t=' + Date.now();
       return fetch(url, { redirect: 'follow' })
         .then(function(r) { return r.text(); })
@@ -1143,6 +1162,14 @@ function syncVocStatsToSheets(data) {
   sendBatch();
 }
 
+// 응답률 기준 상태값 자동 계산
+function calcStatus(ratePct, longPending) {
+  if (ratePct < 30) return '긴급 대응';
+  if (ratePct < 50) return '집중 관리';
+  if (ratePct < 70) return '주의 관찰';
+  return '운영 안정';
+}
+
 // 응답률 숫자를 기존 구간 포맷으로 변환
 function rateToRange(pct) {
   if (pct >= 90) return '90% ~ 100%';
@@ -1154,6 +1181,7 @@ function rateToRange(pct) {
   if (pct >= 20) return '20% ~ 40%';
   return '0% ~ 20%';
 }
+
 
 function handleFile(file, onReady) {
   if (!file) return;
@@ -1647,7 +1675,7 @@ function fetchAllAssigneeSheets(baseUrl, assigneeNames) {
 }
 
 function manualRefreshIssues() {
-  var GAS_URL = 'https://script.google.com/macros/s/AKfycbxQ1V1DkSkIzireOCYpvW5dvnodE821ziWla96if9MPpnd3VY4sEgnj-PQy7wvJMe-kJg/exec';
+  var GAS_URL = 'https://script.google.com/macros/s/AKfycbxlqsc61ML1Jbc3OqeKTgYZP7y4B_4k_pOctjAt3sRbKTDy2TZkXPyEa4si-kPl6mZ9vw/exec';
   var btn = document.getElementById('btnRefreshIssues');
   if (btn) { btn.textContent = '⏳ 불러오는 중...'; btn.disabled = true; }
   fetchSheetsData(GAS_URL, function(rows) {
@@ -1949,7 +1977,7 @@ document.getElementById('btnExportVoc').addEventListener('click', function() {
 
 // 저장된 Sheets URL 자동 복원
 (function() {
-  var GAS_URL = 'https://script.google.com/macros/s/AKfycbxQ1V1DkSkIzireOCYpvW5dvnodE821ziWla96if9MPpnd3VY4sEgnj-PQy7wvJMe-kJg/exec';
+  var GAS_URL = 'https://script.google.com/macros/s/AKfycbxlqsc61ML1Jbc3OqeKTgYZP7y4B_4k_pOctjAt3sRbKTDy2TZkXPyEa4si-kPl6mZ9vw/exec';
   localStorage.setItem(SHEETS_URL_KEY, GAS_URL);
   // sheetsUrl / sheetsUrlInline 은 숨겨져 있으므로 값만 세팅
   var el = document.getElementById('sheetsUrl');
